@@ -23,6 +23,304 @@ VWO의 모든 코드는 명확한 계층 구조 내에서 구성됩니다. 이 �
 
 ---
 
+## 1.5 Playwright MCP를 활용한 실험 페이지 분석
+
+### 1.5.1 개요
+
+VWO 코드를 작성하기 전에 Playwright MCP를 사용하여 실험 대상 페이지를 분석하면 다음과 같은 이점이 있습니다:
+
+- **정확한 CSS Selector 확보**: 실제 DOM 구조를 분석하여 검증된 셀렉터 획득
+- **동적 요소 파악**: AJAX로 로드되는 요소 식별
+- **기존 스타일 확인**: 현재 적용된 CSS 속성 파악
+- **시각적 레이아웃 확인**: 스크린샷으로 변경 전 상태 기록
+
+### 1.5.2 분석 워크플로우
+
+#### Step 1: 페이지 접속
+```
+browser_navigate(url: "https://www.foodcare-cle.com/shop/...")
+```
+
+#### Step 2: 접근성 스냅샷 분석
+```
+browser_snapshot()
+```
+- 페이지의 전체 DOM 구조 파악
+- 각 요소의 `ref` 값 확인 (Playwright 요소 참조)
+- 텍스트 콘텐츠 및 역할(role) 확인
+
+#### Step 3: JavaScript로 상세 정보 추출
+```javascript
+// CSS Selector 유효성 검증
+browser_evaluate({
+  function: "() => { return document.querySelector('.target-class') !== null }"
+})
+
+// 요소의 기존 스타일 확인
+browser_evaluate({
+  function: "() => { return JSON.stringify(getComputedStyle(document.querySelector('.target'))) }"
+})
+
+// DOM 구조 확인
+browser_evaluate({
+  function: "() => { return document.querySelector('.container').innerHTML }"
+})
+```
+
+#### Step 4: 스크린샷 캡처
+```
+browser_take_screenshot(filename: "before-experiment.png")
+```
+
+### 1.5.3 모바일 분석 (모바일 전용 실험 시)
+
+모바일 전용 실험인 경우 반드시 모바일 뷰포트로 전환하여 분석합니다:
+
+```
+// 모바일 뷰포트 설정
+browser_resize(width: 375, height: 812)  // iPhone X
+
+// 모바일 레이아웃 스냅샷
+browser_snapshot()
+
+// 모바일 스크린샷
+browser_take_screenshot(filename: "mobile-before.png")
+```
+
+### 1.5.4 동적 요소 분석
+
+AJAX로 로드되는 요소를 확인하려면:
+
+```javascript
+// 요소가 동적으로 로드되는지 확인
+browser_evaluate({
+  function: "() => { return document.querySelector('.dynamic-element') !== null }"
+})
+
+// 특정 시간 대기 후 재확인
+browser_wait_for(time: 3)
+browser_snapshot()
+```
+
+### 1.5.5 분석 결과 활용
+
+Playwright 분석을 통해 확보한 정보는 VWO 코드 작성에 다음과 같이 활용됩니다:
+
+| 분석 결과 | VWO 코드 적용 |
+|----------|--------------|
+| CSS Selector | `document.querySelector()` 및 "Hide elements" 설정 |
+| 동적 요소 여부 | Trigger 선택 (Campaign executes vs Element loaded) |
+| 기존 스타일 | CSS 우선순위 및 !important 필요 여부 결정 |
+| DOM 구조 | 요소 삽입 위치 결정 (insertBefore/After) |
+| 모바일 레이아웃 | 반응형 스타일 작성 |
+
+### 1.5.6 자주 사용하는 분석 패턴
+
+**패턴 1: 버튼 요소 분석**
+```javascript
+browser_evaluate({
+  function: "() => { const btn = document.querySelector('.cta-button'); return { text: btn.textContent, classes: btn.className, style: getComputedStyle(btn).cssText }; }"
+})
+```
+
+**패턴 2: 모달/팝업 요소 확인**
+```javascript
+// 모달 트리거 클릭
+browser_click(element: "모달 열기 버튼", ref: "button-ref")
+
+// 모달 로드 대기
+browser_wait_for(text: "모달 제목")
+
+// 모달 구조 분석
+browser_snapshot()
+```
+
+**패턴 3: 스크롤 후 요소 확인**
+```javascript
+browser_evaluate({
+  function: "() => { window.scrollTo(0, document.body.scrollHeight); }"
+})
+browser_wait_for(time: 2)
+browser_snapshot()
+```
+
+---
+
+## 1.6 푸드케어 디자인 시스템 및 코딩 가이드 활용
+
+### 1.6.1 개요
+
+VWO 코드는 푸드케어 웹사이트의 기존 디자인 시스템과 코딩 컨벤션을 따라야 합니다. 코드 작성 전 반드시 다음 참조 문서를 확인합니다:
+
+- **`foodcare_uiuxdesignguide.md`**: UI/UX 디자인 시스템
+- **`Foodcare_Frontend_Coding_guide_MO.md`**: 프론트엔드 코딩 패턴
+
+### 1.6.2 UI/UX 디자인 가이드 핵심 참조
+
+#### 색상 팔레트 (섹션 2)
+```css
+/* Primary Colors */
+--primary-green: #2B8B60;      /* 주요 버튼, 강조 링크 */
+--dark-green: #1F6644;         /* 버튼 호버/활성 상태 */
+--light-green: #E8F5F1;        /* 배경 강조 */
+
+/* Accent Colors */
+--accent-pink: #EF6B7A;        /* 이벤트 배너, 특가 배지 */
+--accent-red: #E74C3C;         /* 에러, 경고 */
+
+/* Neutral Colors */
+--text-primary: #333333;       /* 제목, 중요 텍스트 */
+--text-secondary: #666666;     /* 부제목, 설명 */
+--text-light: #999999;         /* 플레이스홀더 */
+--border: #E5E5E5;             /* 기본 경계선 */
+```
+
+#### 타이포그래피 (섹션 3)
+```css
+/* Font Family */
+font-family: 'Noto Sans CJK KR', -apple-system, sans-serif;
+
+/* Text Styles */
+--display: 28px / Bold / 1.4;          /* 페이지 타이틀 */
+--heading-1: 24px / Bold / 1.4;        /* 섹션 제목 */
+--heading-2: 20px / Bold / 1.4;        /* 서브섹션 제목 */
+--body: 15px / Regular / 1.6;          /* 기본 본문 */
+--body-small: 14px / Regular / 1.5;    /* 보조 텍스트 */
+--caption: 12px / Regular / 1.4;       /* 캡션, 라벨 */
+--button: 15px / SemiBold / 1.4;       /* 버튼 텍스트 */
+```
+
+#### 컴포넌트 규격 (섹션 4)
+| 컴포넌트 | 높이 | 패딩 | Border Radius |
+|---------|------|------|---------------|
+| Primary Button | 48px | 12px 16px | 4px |
+| Secondary Button | 48px | 12px 16px | 4px |
+| Text Input | 44px | 12px 16px | 4px |
+| Select/Dropdown | 44px | 12px 16px | 4px |
+| Product Card | auto | 12px | 8px |
+| Badge | auto | 4px 8px | 4px |
+
+#### 여백 시스템 (섹션 5.3)
+```css
+--padding-page: 16px;          /* 페이지 좌우 여백 */
+--margin-section: 24px;        /* 섹션 간 여백 */
+--margin-card: 12px;           /* 카드 간 여백 */
+--grid-gap: 12px;              /* 그리드 간격 */
+```
+
+### 1.6.3 프론트엔드 코딩 가이드 핵심 참조
+
+#### 페이지 구조 (공통 설계 패턴)
+```html
+<header>      <!-- 상단 네비게이션 -->
+<article>     <!-- 메인 콘텐츠 -->
+<nav class="bottom-nav">  <!-- 하단 네비게이션 -->
+<aside>       <!-- 드로어 메뉴 -->
+<footer>      <!-- 하단 정보 -->
+```
+
+#### 폼 처리 패턴
+```html
+<div class="form-group">
+  <label for="fieldId" class="form-label">필드명</label>
+  <input type="text" id="fieldId" class="form-input" />
+  <div class="error-message"></div>
+</div>
+```
+
+#### JavaScript 패턴
+- **상태 관리**: PageManager 클래스 패턴
+- **API 호출**: fetch + CSRF 토큰
+- **분석 추적**: `dev_ext.gtag.push()` 패턴
+
+### 1.6.4 VWO 코드에 디자인 시스템 적용 예시
+
+**버튼 추가 시:**
+```css
+.vwo-cta-button {
+  /* 디자인 가이드 4.1.1 Primary Button */
+  background-color: #2B8B60;
+  color: #FFFFFF;
+  height: 48px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+.vwo-cta-button:hover {
+  background-color: #1F6644;
+}
+```
+
+**카드 추가 시:**
+```css
+.vwo-info-card {
+  /* 디자인 가이드 4.3 카드 */
+  background: #FFFFFF;
+  padding: 12px;
+  border: 1px solid #E5E5E5;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.vwo-info-card__title {
+  font-size: 14px;
+  font-weight: 400;
+  color: #333333;
+}
+
+.vwo-info-card__price {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2B8B60;
+}
+```
+
+**배지 추가 시:**
+```css
+.vwo-badge {
+  /* 디자인 가이드 4.4.1 Status Badge */
+  display: inline-block;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.vwo-badge--success {
+  background: #E8F5F1;
+  color: #2B8B60;
+}
+
+.vwo-badge--warning {
+  background: #FFEBEE;
+  color: #C62828;
+}
+```
+
+### 1.6.5 접근성 고려사항
+
+프론트엔드 코딩 가이드의 접근성 섹션을 참조하여:
+
+- **색상 대비**: 4.5:1 이상 유지
+- **터치 타겟**: 최소 44px × 44px
+- **ARIA 라벨**: 동적 요소에 적절한 ARIA 속성 추가
+- **포커스 상태**: 키보드 사용자를 위한 포커스 스타일 유지
+
+```html
+<!-- 접근성 준수 예시 -->
+<button class="vwo-cta-button"
+        aria-label="식단표 상세 보기"
+        role="button">
+  식단표 보기
+</button>
+```
+
+---
+
 ## 2.0 코드 블록(Code Blocks) 심층 분석
 
 ### 2.1 코드 블록의 구조와 실행 순서

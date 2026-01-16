@@ -6,6 +6,8 @@
 
 ### 주요 기능
 - ✅ 실험설계서 PDF 분석
+- ✅ **Playwright MCP로 실험 페이지 자동 분석** 🔍
+- ✅ CSS Selector 자동 확보 및 검증
 - ✅ VWO Code Editor용 JavaScript/CSS/HTML 코드 생성
 - ✅ 깜빡임 방지 및 모바일 최적화
 - ✅ 테스트 및 디버깅 지원
@@ -43,9 +45,17 @@ vwo-variant-generator.skill
 
 **Claude가 수행하는 작업:**
 1. PDF 분석 → 실험 목표, 페이지, 변경사항 파악
-2. 부족한 정보 질문 (CSS selector, 디바이스 타겟팅 등)
-3. VWO 코드 생성 (HTML/CSS/JavaScript)
-4. VWO 설정 가이드 및 테스트 체크리스트 제공
+2. **Playwright MCP로 페이지 분석** 🔍
+   - 대상 URL 접속 및 DOM 구조 분석
+   - CSS Selector 자동 확보 및 검증
+   - 모바일 뷰포트 전환 후 레이아웃 확인
+   - 변경 전 스크린샷 캡처
+3. **참조 문서 확인** 📚
+   - UI/UX 디자인 가이드 (색상, 폰트, 컴포넌트 규격)
+   - 프론트엔드 코딩 가이드 (HTML/CSS/JS 패턴)
+4. 부족한 정보 질문 (디자인 상세, 우선순위 등)
+5. VWO 코드 생성 (HTML/CSS/JavaScript) - 디자인 시스템 적용
+6. VWO 설정 가이드 및 테스트 체크리스트 제공
 
 ### Step 3: 테스트 및 수정
 
@@ -82,14 +92,51 @@ vwo-variant-generator.skill
   - Variant 수 및 변경사항
   - 성공 지표
 
-### 2단계: 정보 수집
-- 필요한 정보 확인:
-  - [ ] CSS selectors
-  - [ ] DOM 구조
-  - [ ] 디바이스 타겟팅
-  - [ ] 우선순위
+### 2단계: Playwright MCP로 페이지 분석 🔍
+**실험 대상 페이지를 실제로 분석하여 코딩에 필요한 정보를 확보합니다.**
 
-### 3단계: 코드 생성
+```
+🌐 페이지 분석 절차:
+1. browser_navigate → 대상 URL 접속
+2. browser_resize → 모바일 뷰포트 설정 (375x812)
+3. browser_snapshot → DOM 구조 분석
+4. browser_evaluate → CSS Selector 검증
+5. browser_take_screenshot → 변경 전 화면 캡처
+```
+
+**수집하는 정보:**
+- ✅ CSS Selectors (검증됨)
+- ✅ DOM 구조 및 계층
+- ✅ 기존 스타일 속성
+- ✅ 동적 요소 여부
+- ✅ 시각적 레이아웃
+
+### 3단계: 정보 확인 및 보완
+- Playwright 분석 결과 확인:
+  - [x] CSS selectors (자동 확보)
+  - [x] DOM 구조 (자동 확보)
+  - [ ] 디바이스 타겟팅 (실험설계서)
+  - [ ] 디자인 상세 (실험설계서)
+
+### 4단계: 참조 문서 확인 📚
+**푸드케어 디자인 시스템에 맞는 코드 생성을 위해 참조 문서를 확인합니다.**
+
+```
+📖 참조 문서 체크리스트:
+□ foodcare_uiuxdesignguide.md
+  - 색상: Primary #2B8B60, Text #333333
+  - 버튼: 높이 48px, radius 4px
+  - 폰트: Body 15px, Caption 12px
+  - 여백: 페이지 16px, 섹션 24px
+
+□ Foodcare_Frontend_Coding_guide_MO.md
+  - HTML 구조 패턴
+  - CSS 클래스 네이밍
+  - JavaScript 패턴
+  - 접근성 규칙
+```
+
+### 5단계: 코드 생성
 **각 Variant별 생성:**
 - HTML Tab: 새 요소 구조
 - CSS Tab: 스타일링
@@ -181,18 +228,28 @@ vwo-variant-generator.skill
 - 깜빡임 방지 방법
 - 트리거 선택 가이드
 - 디버깅 전략
+- **Playwright MCP 활용법** (섹션 1.5)
+- **디자인 시스템 적용법** (섹션 1.6)
 
 ### Foodcare_Frontend_Coding_guide_MO.md
-- 푸드케어 사이트 구조
+**코드 작성 시 반드시 참조!**
+- 푸드케어 사이트 구조 (header → article → nav → aside → footer)
 - 페이지별 HTML/CSS 패턴
-- 공통 JavaScript 패턴
-- API 호출 방법
+- 공통 JavaScript 패턴 (PageManager, API 호출)
+- 접근성 및 웹 표준 (ARIA, 시맨틱 HTML)
 
 ### foodcare_uiuxdesignguide.md
-- 색상 팔레트
-- 타이포그래피
-- 컴포넌트 스타일
-- 버튼/입력 필드 사양
+**디자인 값 적용 시 반드시 참조!**
+| 항목 | 주요 값 |
+|-----|--------|
+| Primary Color | `#2B8B60` |
+| Text Color | `#333333` / `#666666` / `#999999` |
+| Border Color | `#E5E5E5` |
+| Button Height | `48px` |
+| Input Height | `44px` |
+| Border Radius | Button `4px`, Card `8px` |
+| Font Size | Body `15px`, Caption `12px` |
+| Page Padding | `16px` |
 
 ### history.md
 - 이전 실험 기록
